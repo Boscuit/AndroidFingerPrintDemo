@@ -1,5 +1,6 @@
 package com.createchance.fingerprintdemo;
 
+
 import android.content.DialogInterface;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Handler;
@@ -18,7 +19,6 @@ import android.widget.Toast;
 public class MainActivity extends AppCompatActivity {
 
     private final String TAG = "MainActivity";
-
     private TextView mResultInfo = null;
     private Button mCancelBtn = null;
     private Button mStartBtn = null;
@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        handler = new Handler() {
+         handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
@@ -92,6 +92,10 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "msg: " + msg.what + " ,arg1: " + msg.arg1);
                 switch (msg.what) {
                     case MSG_AUTH_SUCCESS:
+                        /*Obtain Device_Id*/
+                        Installation installation = new Installation();
+                        String AppID = installation.id(getApplicationContext());
+                        dynamicSetAppIDInfo(AppID);//dynamic text
                         setResultInfo(R.string.fingerprint_success);
                         mCancelBtn.setEnabled(false);
                         mStartBtn.setEnabled(true);
@@ -99,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case MSG_AUTH_FAILED:
                         setResultInfo(R.string.fingerprint_not_recognized);
+                        dynamicSetAppIDInfo("No Access");//dynamic text
                         mCancelBtn.setEnabled(false);
                         mStartBtn.setEnabled(true);
                         cancellationSignal = null;
@@ -164,6 +169,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void DynamicSetTextTool(int stringId, Object changeText, int viewId) {// 动态文本工具方法
+        String RefreshTime = getResources().getString(stringId);
+        String FinalRefreshTime = String.format(RefreshTime, changeText);
+        TextView RefreshTextObject = (TextView) findViewById(viewId);
+        RefreshTextObject.setText(FinalRefreshTime);
+    }
+
     private void handleHelpCode(int code) {
         switch (code) {
             case FingerprintManager.FINGERPRINT_ACQUIRED_GOOD:
@@ -220,4 +232,10 @@ public class MainActivity extends AppCompatActivity {
             mResultInfo.setText(stringId);
         }
     }
+
+    private void dynamicSetAppIDInfo(String AppID){
+        DynamicSetTextTool(R.string.app_id,AppID,R.id.app_id);
+    }
 }
+
+
