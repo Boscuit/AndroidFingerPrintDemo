@@ -47,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
         mCancelBtn.setEnabled(false);
         mStartBtn.setEnabled(true);
 
+        initBluetooth();
+
         // set button listeners
         mCancelBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -95,10 +97,14 @@ public class MainActivity extends AppCompatActivity {
                 switch (msg.what) {
                     case MSG_AUTH_SUCCESS:
                         /*Obtain Device_Id*/
-                        Installation installation = new Installation();
-                        String AppID = installation.id(getApplicationContext());
+                        Installation mInstallation = new Installation();
+                        String AppID = mInstallation.id(getApplicationContext());
                         dynamicSetAppIDInfo(AppID);//dynamic text
                         setResultInfo(R.string.fingerprint_success);
+                        //*******Device_Id Obtained********
+                        /*Bluetooth*/
+                        BleManager mBleManager = new BleManager();
+                        mBleManager.startLeScan();
                         mCancelBtn.setEnabled(false);
                         mStartBtn.setEnabled(true);
                         cancellationSignal = null;
@@ -243,13 +249,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void initBluetooth() {
         BluetoothManager mBluetoothManager = (BluetoothManager) this.getSystemService(this.BLUETOOTH_SERVICE);
-        if (mBluetoothManager != null)
-        {
+        if (mBluetoothManager != null) {
             BluetoothAdapter mBluetoothAdapter = mBluetoothManager.getAdapter();
-            if (mBluetoothAdapter != null)
-            {
-                if (!mBluetoothAdapter.isEnabled())
-                {
+            if (mBluetoothAdapter == null) {
+                Log.d(TAG, "Bluetooth is not support");
+            }
+            else{
+                if (!mBluetoothAdapter.isEnabled()) {
                     mBluetoothAdapter.enable();  //打开蓝牙
                 }
             }
