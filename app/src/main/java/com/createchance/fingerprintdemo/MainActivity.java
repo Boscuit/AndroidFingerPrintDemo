@@ -1,6 +1,8 @@
 package com.createchance.fingerprintdemo;
 
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
 import android.content.DialogInterface;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Handler;
@@ -235,6 +237,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void dynamicSetAppIDInfo(String AppID){
         DynamicSetTextTool(R.string.app_id,AppID,R.id.app_id);
+    }
+
+    //初始化蓝牙，这个方法一般可以写在项目的启动activity,不然怕在写完ble代码执行后发现没有打开蓝牙还需要手动去打开对项目体验感不好，当然只要您老人家开心，写不写都可以。
+
+    private void initBluetooth() {
+        BluetoothManager mBluetoothManager = (BluetoothManager) this.getSystemService(this.BLUETOOTH_SERVICE);
+        if (mBluetoothManager != null)
+        {
+            BluetoothAdapter mBluetoothAdapter = mBluetoothManager.getAdapter();
+            if (mBluetoothAdapter != null)
+            {
+                if (!mBluetoothAdapter.isEnabled())
+                {
+                    mBluetoothAdapter.enable();  //打开蓝牙
+                }
+            }
+        }
     }
 }
 

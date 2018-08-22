@@ -48,6 +48,8 @@
         The timeout is platform and sensor-specific, but is generally about 30 seconds.</string>
     <string name="ErrorUnableToProcess_warning">Error state returned when the sensor was unable to process the current image.</string>
     <string name="app_id">AppID:%1$s</string>
+    <string name="ble_status">BLEStatus:%1$s</string>
+    <string name="msg_connect_failed">Connect failed. Time out. Please check.</string>
 
 
 </resources>

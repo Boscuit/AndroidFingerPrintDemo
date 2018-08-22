@@ -44,11 +44,18 @@
         style="@android:style/TextAppearance.Material.Body1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_marginEnd="31dp"
-        android:layout_marginTop="229dp"
+        android:layout_alignStart="@+id/null"
+        android:layout_centerVertical="true"
         android:text="@string/app_id"
         android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/ble_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignStart="@+id/null"
+        android:layout_marginBottom="185dp"
+        android:text="@string/ble_status" />
 
 </RelativeLayout>
