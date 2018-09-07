@@ -11,11 +11,53 @@
 
     <FrameLayout
         android:layout_width="match_parent"
+        android:layout_height="303dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="130dp">
+
+        <LinearLayout
+            android:id="@+id/Infoframe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/app_id"
+                style="@android:style/TextAppearance.Material.Body1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignStart="@+id/fingerprint_container"
+                android:layout_centerVertical="true"
+                android:text="@string/app_id"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/ble_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_alignParentStart="true"
+                android:layout_marginBottom="165dp"
+                android:text="@string/ble_status" />
+
+            <ListView
+                android:id="@+id/devices_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <include
             layout="@layout/fingerprint_dialog_container"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:layout_width="match_parent" />
 
     </FrameLayout>
 
@@ -38,24 +80,5 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/app_id"
-        style="@android:style/TextAppearance.Material.Body1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignStart="@+id/null"
-        android:layout_centerVertical="true"
-        android:text="@string/app_id"
-        android:textSize="14sp" />
-
-    <TextView
-        android:id="@+id/ble_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignStart="@+id/null"
-        android:layout_marginBottom="185dp"
-        android:text="@string/ble_status" />
 
 </RelativeLayout>
