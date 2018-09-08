@@ -2,21 +2,31 @@ package com.createchance.fingerprintdemo;
 
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.hardware.fingerprint.FingerprintManagerCompat;
@@ -33,7 +43,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,8 +66,19 @@ public class MainActivity extends AppCompatActivity {
     private List<ScanFilter> bleScanFilters;
     private ScanSettings bleScanSettings;
     private boolean mScanning;
+    private boolean mConnected = false;
+    private TextView mConnectionState;
+    private TextView mDataField;
+    private String AppID;
+    private String mDeviceName;
+    private String mDeviceAddress;
+    private BluetoothLeService mBluetoothLeService;
+    private BluetoothGattCharacteristic mNotifyCharacteristic;
+//    private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics;
 
     private Handler handler = null;
+    private final String LIST_NAME = "NAME";
+    private final String LIST_UUID = "UUID";
     public static final int MSG_AUTH_SUCCESS = 100;
     public static final int MSG_AUTH_FAILED = 101;
     public static final int MSG_AUTH_ERROR = 102;
@@ -76,7 +99,9 @@ public class MainActivity extends AppCompatActivity {
         mCancelBtn = (Button) this.findViewById(R.id.cancel_button);
         mStartBtn = (Button) this.findViewById(R.id.start_button);
 
-        mDeviceList = (ListView) findViewById(R.id.devices_list);
+        mConnectionState = (TextView) this.findViewById(R.id.connection_state);
+        mDataField = (TextView) this.findViewById(R.id.data_value);
+        mDeviceList = (ListView) this.findViewById(R.id.devices_list);
 
         mCancelBtn.setEnabled(false);
         mStartBtn.setEnabled(true);
@@ -102,6 +127,13 @@ public class MainActivity extends AppCompatActivity {
                 // reset result info.
                 mResultInfo.setText(R.string.fingerprint_hint);
                 mResultInfo.setTextColor(getColor(R.color.hint_color));
+
+                //disconnect previous connection
+                if (mBluetoothLeService != null){
+                    mBluetoothLeService.disconnect();
+                }
+                //clear UI
+                clearUI();
 
                 // start fingerprint auth here.
                 try {
@@ -131,12 +163,14 @@ public class MainActivity extends AppCompatActivity {
                     case MSG_AUTH_SUCCESS:
                         /*Obtain Device_Id*/
                         Installation mInstallation = new Installation();
-                        String AppID = mInstallation.id(getApplicationContext());
+                        AppID = mInstallation.id(getApplicationContext());
                         dynamicSetAppIDInfo(AppID);//dynamic text
                         setResultInfo(R.string.fingerprint_success);
                         //*******Device_Id Obtained********
                         /*Bluetooth*/
                         mLeDeviceListAdapter.clear();
+                        mLeDeviceListAdapter.notifyDataSetChanged();
+                        mDeviceList.setAdapter(mLeDeviceListAdapter);
                         scanLeDevice(true);
                         mCancelBtn.setEnabled(false);
                         mStartBtn.setEnabled(true);
@@ -246,8 +280,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Initializes list view adapter.
         mLeDeviceListAdapter = new LeDeviceListAdapter(mContext);
-        mLeDeviceListAdapter.notifyDataSetChanged();
         mDeviceList.setAdapter(mLeDeviceListAdapter);
+
         // Set list item click event
         mDeviceList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -255,15 +289,112 @@ public class MainActivity extends AppCompatActivity {
                 //扫描到的是一个蓝牙列表 通过位置得到 要连接的是哪一个。
                 final BluetoothDevice device = mLeDeviceListAdapter.getDevice(position);//点击再根据点击位置获取device
                 if (device == null) return;
-                final Intent intent = new Intent(mContext,DeviceControlActivity.class);
-                intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.getName());
-                intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
+                //Set up UI reference
+                mDeviceName = device.getName();
+                mDeviceAddress = device.getAddress();
+                //设置intent 绑定服务===================
+                Intent gattServiceIntent = new Intent(mContext, BluetoothLeService.class);
+                bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);//mServiceConnection 连接蓝牙
+                //向系统注册广播接收 当有数据时会通知 当断开连接 连接时有通知
+                registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter());
+                if (mBluetoothLeService != null) {
+                    final boolean result = mBluetoothLeService.connect(mDeviceAddress);
+                    Log.d(TAG, "Connect request result=" + result);
+                }
+                if (mConnected){
+//                    BluetoothGattService BroadcastService = new BluetoothGattService((UUID.fromString()))
+                    List<BluetoothGattService> ServiceList = mBluetoothLeService.getSupportedGattServices();
+                    if (ServiceList == null) return;
+                    String uuid = null;
+                    String unknownServiceString = getResources().getString(R.string.unknown_service);
+                    String unknownCharaString = getResources().getString(R.string.unknown_characteristic);
+//                    ArrayList<HashMap<String, String>> gattServiceData = new ArrayList<HashMap<String, String>>();
+//                    ArrayList<ArrayList<HashMap<String, String>>> gattCharacteristicData
+//                            = new ArrayList<ArrayList<HashMap<String, String>>>();
+//                    mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+                    for (BluetoothGattService gattService : ServiceList) {
+                        HashMap<String, String> currentServiceData = new HashMap<String, String>();
+                        uuid = gattService.getUuid().toString();
+                        currentServiceData.put(
+                                LIST_NAME, SampleGattAttributes.lookup(uuid, unknownServiceString));
+                        currentServiceData.put(LIST_UUID, uuid);
+                        //gattServiceData.add(currentServiceData);
+                        if (currentServiceData.get(LIST_NAME) == "Data Broadcast Service"){
+//                            ArrayList<HashMap<String, String>> gattCharacteristicGroupData =
+                                    new ArrayList<HashMap<String, String>>();
+                            List<BluetoothGattCharacteristic> gattCharacteristics =
+                                    gattService.getCharacteristics();
+                            ArrayList<BluetoothGattCharacteristic> charas =
+                                    new ArrayList<BluetoothGattCharacteristic>();
+                            // Loops through available Characteristics.
+                            for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
+                                charas.add(gattCharacteristic);
+                                HashMap<String, String> currentCharaData = new HashMap<String, String>();
+                                uuid = gattCharacteristic.getUuid().toString();
+                                currentCharaData.put(
+                                        LIST_NAME, SampleGattAttributes.lookup(uuid, unknownCharaString));
+                                currentCharaData.put(LIST_UUID, uuid);
+                                if (currentCharaData.get(LIST_NAME) == "Broadcast Data") {
+                                    //得到特征值的描述  可读 可写  可notify
+                                    final int charaProp = gattCharacteristic.getProperties();
+//                                    if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
+//                                        if (mNotifyCharacteristic != null) {
+//                                            mBluetoothLeService.setCharacteristicNotification(
+//                                                    mNotifyCharacteristic, false);
+//                                            mNotifyCharacteristic = null;
+//                                        }
+//                                        //读取可读的特征值
+//                                        System.out.println("Readable");
+//                                        mBluetoothLeService.readCharacteristic(gattCharacteristic);
+//                                    }
+                                    if ((charaProp | BluetoothGattCharacteristic.PROPERTY_WRITE) > 0)
+                                    {
+//                                        // If there is an active notification on a characteristic, clear
+//                                        // it first so it doesn't update the data field on the user interface.
+//                                        if (mNotifyCharacteristic != null) {
+//                                            System.out.println("Write Act Notified");
+//                                            mBluetoothLeService.setCharacteristicNotification(
+//                                                    mNotifyCharacteristic, false);
+//                                            mNotifyCharacteristic = null;
+//                                        }
+                                        //characteristic.setValue(bytes);
+                                        String AppIDMiddle = AppID.substring(9,23);
+                                        gattCharacteristic.setValue("O/"+AppIDMiddle+".");//Max 20 bytes
+                                        //characteristic.setWriteType(BluetoothGattCharacteristic.PERMISSION_WRITE);
+                                        System.out.println("Writable");
+                                        mBluetoothLeService.writeCharacteristic(gattCharacteristic);
+                                        System.out.println("Notifiable");
+                                        mNotifyCharacteristic = gattCharacteristic;
+                                        mBluetoothLeService.setCharacteristicNotification(
+                                                gattCharacteristic, true);
+
+                                    }
+//                                    if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0)
+//                                    {
+//                                        System.out.println("Notifiable");
+//                                        mNotifyCharacteristic = gattCharacteristic;
+//                                        mBluetoothLeService.setCharacteristicNotification(
+//                                                gattCharacteristic, true);
+//                                    }
+                                    mBluetoothLeService.disconnect();
+                                }
+//                                gattCharacteristicGroupData.add(currentCharaData);
+                            }
+//                            mGattCharacteristics.add(charas);
+//                            gattCharacteristicData.add(gattCharacteristicGroupData);
+                        }
+                    }
+
+                }
+//                final Intent intent = new Intent(mContext,DeviceControlActivity.class);
+//                intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.getName());
+//                intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());
                 if (mScanning) {
                     mBluetoothLeScanner.stopScan(mScanCallback);
                     //mBluetoothAdapter.stopLeScan(mLeScanCallback);
                     mScanning = false;
                 }
-                startActivity(intent);
+//                startActivity(intent);
             }
         });
 
@@ -276,6 +407,8 @@ public class MainActivity extends AppCompatActivity {
         if (!mStartBtn.isEnabled() && cancellationSignal != null) {
             cancellationSignal.cancel();
         }
+        mBluetoothLeService.close();//close ble service
+
     }
 
     @Override
@@ -292,7 +425,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         scanLeDevice(false);
-        //mLeDeviceListAdapter.clear();
+        mLeDeviceListAdapter.clear();
+        mLeDeviceListAdapter.notifyDataSetChanged();
     }
 
     //这个函数可以启动 蓝牙搜索 十秒之后结束
@@ -374,6 +508,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    //fingerprint result
     private void setResultInfo(int stringId) {
         if (mResultInfo != null) {
             if (stringId == R.string.fingerprint_success) {
@@ -406,6 +541,106 @@ public class MainActivity extends AppCompatActivity {
             });
         }
     };//===============end of lescancallback 这个callback 函数 会将device 传过来 这里可以添加设备
+
+    //更新连接状态显示 开启了一条线程==================
+    private void updateConnectionState(final int resourceId) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mConnectionState.setText(resourceId);
+            }
+        });
+    }//end of updateconnectionstate=============
+
+    //显示 接收到的数据 这个方法被 广播接收器 调用
+    private void displayData(String data) {
+        if (data != null) {
+            mDataField.setText(data);
+        }
+    }
+
+    private void clearUI() {
+        mDeviceList.setAdapter(null);
+        mDataField.setText(R.string.no_data);
+    }//清除掉DataUI
+
+    private final ServiceConnection mServiceConnection = new ServiceConnection() {
+
+        //当蓝牙连接的时候 这里可以得到服务 ，以及使用服务的方法。假如初始化失败的话就退出
+        @Override
+        public void onServiceConnected(ComponentName componentName, IBinder service) {
+            System.out.println("******** onServiceConnected *********");
+            //这里可以得到服务类的服务========== 如果初始化失败就退出  初始化的结果是得到一个GATT===============
+            mBluetoothLeService = ((BluetoothLeService.LocalBinder) service).getService();
+            if (!mBluetoothLeService.initialize()) {
+                finish();
+            }
+
+            // Automatically connects to the device upon successful start-up initialization.
+            //这里是连接设备===============
+            mBluetoothLeService.connect(mDeviceAddress);
+        }
+        //当服务断开的时候 就将蓝牙服务释放掉
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+            mBluetoothLeService = null;
+        }
+    };//end of serviceconnection====================
+
+    //这个是广播接收器 接收从Service 发过来的广播  发现服务 断开 连接 有接收到数据时的通知
+    private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
+        @SuppressLint("NewApi") @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+                System.out.println(" control connected");
+                mConnected = true;
+                updateConnectionState(R.string.connected);
+                invalidateOptionsMenu();
+            } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                System.out.println("control disconnected");
+                mConnected = false;
+                updateConnectionState(R.string.disconnected);
+                invalidateOptionsMenu();
+                clearUI();
+            } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
+                // Show all the supported services and characteristics on the user interface.
+//                displayGattServices(mBluetoothLeService.getSupportedGattServices());
+                UUID servuuid2 = mBluetoothLeService.getSupportedGattServices().get(2).getUuid();
+
+                System.out.println("serv uuid 2  "+ servuuid2);
+//
+//                UUID charuuid0 = mBluetoothLeService.getSupportedGattServices().get(2).getCharacteristics().get(0).getUuid();
+//                UUID charuuid1 = mBluetoothLeService.getSupportedGattServices().get(2).getCharacteristics().get(1).getUuid();
+//
+//                System.out.println("char 0"+charuuid0);
+//                System.out.println("char 1"+charuuid1);
+//
+                mBluetoothLeService.setCharacteristicNotification(mBluetoothLeService.getSupportedGattServices().get(2).getCharacteristics().get(0),true);
+
+                BluetoothGatt mygatt =  mBluetoothLeService.KgetGatt();
+                BluetoothGattCharacteristic kencharwrite;
+                kencharwrite = mBluetoothLeService.getSupportedGattServices().get(2).getCharacteristics().get(1);
+                System.out.println(kencharwrite.getUuid()+"%%%%%%%%%%%%%%%%%%%%%%%");
+                byte[] a = {0,10,20};
+                kencharwrite.setValue(a);
+                mygatt.writeCharacteristic(mBluetoothLeService.getSupportedGattServices().get(2).getCharacteristics().get(1));
+            } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
+                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                System.out.println("recieve data :"+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+            }
+        }
+    };
+
+    // 广播接收过滤器  当GATT连接时 当GATT断开连接时 发现服务时 当从机有数据过来时。
+    private static IntentFilter makeGattUpdateIntentFilter() {
+        final IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_CONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
+        return intentFilter;
+    }
 
 }
 
