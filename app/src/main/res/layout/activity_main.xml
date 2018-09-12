@@ -14,7 +14,7 @@
         android:layout_height="303dp"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="130dp">
+        android:layout_marginTop="200dp">
 
         <LinearLayout
             android:id="@+id/Infoframe"
@@ -22,26 +22,16 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/app_id"
-                style="@android:style/TextAppearance.Material.Body1"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_alignStart="@+id/fingerprint_container"
-                android:layout_centerVertical="true"
-                android:text="@string/app_id"
-                android:textSize="14sp" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_margin="10dp"
+                android:layout_margin="5dp"
                 android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/label_device_address"
+                    android:text="@string/lable_device_name"
                     android:textSize="18sp" />
 
                 <Space
@@ -49,7 +39,7 @@
                     android:layout_height="wrap_content" />
 
                 <TextView
-                    android:id="@+id/device_address"
+                    android:id="@+id/device_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textSize="18sp" />
@@ -58,7 +48,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_margin="10dp"
+                android:layout_margin="5dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -82,7 +72,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_margin="10dp"
+                android:layout_margin="5dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -106,7 +96,9 @@
             <ListView
                 android:id="@+id/devices_list"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="130dp"
+                android:layout_marginLeft="5dp"
+                android:layout_marginRight="5dp" />
 
         </LinearLayout>
 
@@ -118,8 +110,8 @@
 
         <include
             layout="@layout/fingerprint_dialog_container"
-            android:layout_height="match_parent"
-            android:layout_width="match_parent" />
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
     </FrameLayout>
 

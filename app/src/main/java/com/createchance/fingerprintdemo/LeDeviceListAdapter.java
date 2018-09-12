@@ -2,13 +2,18 @@ package com.createchance.fingerprintdemo;
 
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+
+import static android.content.ContentValues.TAG;
 
 public class LeDeviceListAdapter extends BaseAdapter {
 
@@ -56,7 +61,7 @@ public class LeDeviceListAdapter extends BaseAdapter {
     }
     //这个getview 里面的内容就是将设备的名字以及地址写入了text中
     @Override
-    public View getView(int i, View view, ViewGroup viewGroup) {
+    public View getView(final int i, View view, ViewGroup viewGroup) {
         ViewHolder mViewHolder;
         // General ListView optimization code.
         if (view == null) {
@@ -64,6 +69,7 @@ public class LeDeviceListAdapter extends BaseAdapter {
             mViewHolder = new ViewHolder();
             mViewHolder.deviceAddress = (TextView) view.findViewById(R.id.device_address);
             mViewHolder.deviceName = (TextView) view.findViewById(R.id.device_name);
+            mViewHolder.mLogOutBtn = (Button) view.findViewById(R.id.log_out);
             view.setTag(mViewHolder);
         } else {
             mViewHolder = (ViewHolder) view.getTag();
@@ -88,5 +94,6 @@ public class LeDeviceListAdapter extends BaseAdapter {
     static class ViewHolder {
         TextView deviceName;
         TextView deviceAddress;
+        Button mLogOutBtn;
     }
 }//end of ledevicelistadapter
