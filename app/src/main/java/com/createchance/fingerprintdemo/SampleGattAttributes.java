@@ -1,4 +1,5 @@
 package com.createchance.fingerprintdemo;
+
 import java.util.HashMap;
 
 public class SampleGattAttributes {
